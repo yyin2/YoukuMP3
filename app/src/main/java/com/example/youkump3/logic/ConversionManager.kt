@@ -36,7 +36,7 @@ class ConversionManager(private val context: Context) {
                 // Output file setup
                 val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
                 val fileName = "YoukuAudio_$timestamp.mp3"
-                val outputDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+                val outputDir = context.externalCacheDir ?: context.cacheDir
                 val outputFile = File(outputDir, fileName)
                 
                 if (!outputDir.exists()) outputDir.mkdirs()

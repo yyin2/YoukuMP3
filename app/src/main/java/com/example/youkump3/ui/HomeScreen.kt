@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,7 +24,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.youkump3.R
 import com.example.youkump3.data.AppDatabase
 import com.example.youkump3.data.ConversionRecord
 import com.example.youkump3.data.HistoryRepository
@@ -33,15 +36,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(initialUrl: String?, onNavigateToHistory: () -> Unit) {
     val context = LocalContext.current
-    // Ideally these should be injected or provided by ViewModel, but for simplicity here:
     val db = remember { AppDatabase.getDatabase(context) }
     val repo = remember { HistoryRepository(db.historyDao()) }
     val conversionManager = remember { ConversionManager(context) }
     val scope = rememberCoroutineScope()
 
     var url by remember { mutableStateOf("") }
-    var logs by remember { mutableStateOf("Ready to start.\n") }
-    // Clean up logs to keep them readable? Maybe just append.
+    var logs by remember { mutableStateOf("") }
     var isConverting by remember { mutableStateOf(false) }
 
     LaunchedEffect(initialUrl) {
@@ -57,16 +58,16 @@ fun HomeScreen(initialUrl: String?, onNavigateToHistory: () -> Unit) {
     ) {
         Row {
             Button(onClick = onNavigateToHistory, modifier = Modifier.weight(1f)) {
-                Text("History")
+                Text(stringResource(R.string.history_btn))
             }
         }
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        Text("Youku URL:")
         OutlinedTextField(
             value = url,
             onValueChange = { url = it },
+            label = { Text(stringResource(R.string.enter_url_hint)) },
             modifier = Modifier.fillMaxWidth(),
             maxLines = 2
         )
@@ -91,7 +92,6 @@ fun HomeScreen(initialUrl: String?, onNavigateToHistory: () -> Unit) {
                                 isConverting = false
                                 logs += if (success) "FINISHED: Saved to $path\n" else "FAILED.\n"
                                 
-                                // Save to history
                                 val record = ConversionRecord(
                                     originalUrl = currentUrl,
                                     filePath = path,
@@ -110,12 +110,12 @@ fun HomeScreen(initialUrl: String?, onNavigateToHistory: () -> Unit) {
             enabled = !isConverting && url.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (isConverting) "Converting..." else "Start Conversion")
+            Text(if (isConverting) stringResource(R.string.status_processing) else stringResource(R.string.start_conversion))
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Logs:")
+        Text(stringResource(R.string.logs_label))
         Column(
             modifier = Modifier
                 .weight(1f)
