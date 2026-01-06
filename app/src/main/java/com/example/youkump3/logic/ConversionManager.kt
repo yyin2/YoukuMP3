@@ -1,7 +1,6 @@
 package com.example.youkump3.logic
 
 import android.content.Context
-import android.os.Environment
 import com.arthenica.ffmpegkit.FFmpegKit
 import com.arthenica.ffmpegkit.ReturnCode
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +22,7 @@ class ConversionManager(private val context: Context) {
         withContext(Dispatchers.IO) {
             try {
                 onLog("Starting extraction process for: $youkuUrl")
-                val mediaUrl = extractor.extractMediaUrl(youkuUrl, onLog)
+                val (mediaUrl, title) = extractor.extractMediaInfo(youkuUrl, onLog)
                 
                 if (mediaUrl.isBlank()) {
                     onLog("Error: Could not extract media URL.")
@@ -34,8 +33,9 @@ class ConversionManager(private val context: Context) {
                 onLog("Media URL extracted. Starting download and conversion...")
                 
                 // Output file setup
-                val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-                val fileName = "YoukuAudio_$timestamp.mp3"
+                // Sanitize title for filename
+                val safeTitle = title.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                val fileName = "${safeTitle}.mp3"
                 val outputDir = context.externalCacheDir ?: context.cacheDir
                 val outputFile = File(outputDir, fileName)
                 
