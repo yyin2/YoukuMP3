@@ -30,7 +30,7 @@ interface HistoryDao {
     suspend fun insert(record: ConversionRecord)
 }
 
-@Database(entities = [ConversionRecord::class], version = 1)
+@Database(entities = [ConversionRecord::class], version = 1, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun historyDao(): HistoryDao
 
