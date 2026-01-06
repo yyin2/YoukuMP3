@@ -13,8 +13,12 @@ room = "2.6.1"
 okhttp = "4.12.0"
 workParams = "2.9.0"
 ksp = "1.9.0-1.0.13" # Matching Kotlin 1.9.0
+youtubedl = "0.19.0" # Trying a newer version, orstick to 0.16.0 if unsure. Let's try 0.19.0 as per search result usually being high. Actually, let's use 0.16.0 to be safe as per README, or 0.18.1.
+# Re-reading: Search [1] said 0.18.1 is latest stable.
+# So I will use 0.18.1 with the correct group.
 
 [libraries]
+youtubedl-android = { group = "io.github.junkfood02.youtubedl-android", name = "library", version = "0.18.1" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

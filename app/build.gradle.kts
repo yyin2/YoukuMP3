@@ -64,6 +64,7 @@ dependencies {
     // Feature Dependencies
     //implementation(libs.ffmpeg.kit.full)
     //implementation("com.arthenica:ffmpeg-kit-full:6.0-2.LTS")
+    implementation(libs.youtubedl.android)
     implementation(files("libs/ffmpeg-kit-full-6.0-2.LTS.aar"))
     implementation("com.arthenica:smart-exception-java:0.2.1")
     implementation(libs.androidx.room.runtime)
