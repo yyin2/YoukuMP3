@@ -57,6 +57,7 @@ fun HistoryScreen(onBack: () -> Unit, onRetry: (String) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryItem(record: ConversionRecord, onRetry: (String) -> Unit) {
     val isFailed = record.status != "SUCCESS"
