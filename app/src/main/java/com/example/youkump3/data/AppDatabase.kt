@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 @Entity(tableName = "conversion_history")
 data class ConversionRecord(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val title: String?, // Added field
     val originalUrl: String,
     val filePath: String?,
     val status: String,
@@ -35,7 +36,7 @@ interface HistoryDao {
     suspend fun update(record: ConversionRecord)
 }
 
-@Database(entities = [ConversionRecord::class], version = 1, exportSchema = false)
+@Database(entities = [ConversionRecord::class], version = 2, exportSchema = false) // Bump version
 abstract class AppDatabase : RoomDatabase() {
     abstract fun historyDao(): HistoryDao
 
@@ -49,7 +50,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "youku_mp3_db"
-                ).build()
+                )
+                .fallbackToDestructiveMigration() // Simple migration for this dev phase
+                .build()
                 INSTANCE = instance
                 instance
             }

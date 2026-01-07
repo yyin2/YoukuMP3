@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
@@ -88,14 +89,13 @@ fun HistoryScreen(onBack: () -> Unit, onNavigateToDetail: (String) -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryItem(record: ConversionRecord, onNavigateToDetail: (String) -> Unit, context: Context) {
-    val isFailed = record.status != "SUCCESS"
+    val isFailed = record.status == "FAILED"
     val isSuccess = record.status == "SUCCESS"
+    val isRunning = record.status == "RUNNING"
     
-    // Local MediaPlayer state for preview in list (optional, might conflict with Detail, but handy)
     var isPlaying by remember { mutableStateOf(false) }
     var mediaPlayer: MediaPlayer? by remember { mutableStateOf(null) }
 
-    // Save Launcher
     val saveLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("audio/mpeg")
     ) { uri: Uri? ->
@@ -113,63 +113,80 @@ fun HistoryItem(record: ConversionRecord, onNavigateToDetail: (String) -> Unit, 
             onNavigateToDetail(record.originalUrl)
         }
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("${stringResource(R.string.label_date)} ${SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(record.timestamp))}")
-            Text("${stringResource(R.string.label_url)} ${record.originalUrl}", maxLines = 1)
-            Row {
-                Text(stringResource(R.string.label_status), color = MaterialTheme.colorScheme.onSurface)
-                Text(
-                    text = if (isFailed) stringResource(R.string.status_failed) else stringResource(R.string.status_success), 
-                    color = if (isFailed) Color.Red else Color.Green
-                )
-            }
-            if (isFailed) {
-                Text(stringResource(R.string.tap_to_retry), style = MaterialTheme.typography.labelSmall)
-            }
-            
-            // Buttons if success
-            if (isSuccess && record.filePath != null) {
-                Spacer(modifier = Modifier.height(8.dp))
+        SelectionContainer {
+            Column(modifier = Modifier.padding(16.dp)) {
+                if (!record.title.isNullOrBlank()) {
+                    Text("${stringResource(R.string.label_title)} ${record.title}", style = MaterialTheme.typography.titleSmall)
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                Text("${stringResource(R.string.label_date)} ${SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(record.timestamp))}")
+                Text("${stringResource(R.string.label_url)} ${record.originalUrl}")
                 Row {
-                    Button(onClick = {
-                         if (isPlaying) {
-                            mediaPlayer?.stop()
-                            mediaPlayer?.release()
-                            mediaPlayer = null
-                            isPlaying = false
-                         } else {
-                            mediaPlayer = MediaPlayer().apply {
-                                try {
-                                    setDataSource(record.filePath)
-                                    prepare()
-                                    start()
-                                    setOnCompletionListener { 
-                                        isPlaying = false 
-                                        mediaPlayer?.release()
-                                        mediaPlayer = null
-                                    }
-                                } catch (e: Exception) {
-                                     Toast.makeText(context, "Error", Toast.LENGTH_SHORT).show()
-                                     return@apply
-                                }
-                            }
-                            isPlaying = true
-                         }
-                    }) {
-                        Icon(if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(if (isPlaying) "Stop" else stringResource(R.string.btn_preview))
+                    Text(stringResource(R.string.label_status), color = MaterialTheme.colorScheme.onSurface)
+                    val statusText = when (record.status) {
+                        "SUCCESS" -> stringResource(R.string.status_success)
+                        "FAILED" -> stringResource(R.string.status_failed)
+                        else -> stringResource(R.string.status_running)
                     }
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
-                    
-                    Button(onClick = {
-                         val fileName = File(record.filePath).name
-                         saveLauncher.launch(fileName)
-                    }) {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.btn_save_as))
+                    val statusColor = when (record.status) {
+                        "SUCCESS" -> Color.Green
+                        "FAILED" -> Color.Red
+                        else -> Color.Blue
+                    }
+                    Text(text = statusText, color = statusColor)
+                }
+                if (isFailed) {
+                    Text(stringResource(R.string.tap_to_retry), style = MaterialTheme.typography.labelSmall)
+                }
+                if (isRunning) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    CircularProgressIndicator(modifier = Modifier.width(20.dp).height(20.dp), strokeWidth = 2.dp)
+                }
+                
+                // Buttons if success
+                if (isSuccess && record.filePath != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row {
+                        Button(onClick = {
+                             if (isPlaying) {
+                                mediaPlayer?.stop()
+                                mediaPlayer?.release()
+                                mediaPlayer = null
+                                isPlaying = false
+                             } else {
+                                mediaPlayer = MediaPlayer().apply {
+                                    try {
+                                        setDataSource(record.filePath)
+                                        prepare()
+                                        start()
+                                        setOnCompletionListener { 
+                                            isPlaying = false 
+                                            mediaPlayer?.release()
+                                            mediaPlayer = null
+                                        }
+                                    } catch (e: Exception) {
+                                         Toast.makeText(context, "Error", Toast.LENGTH_SHORT).show()
+                                         return@apply
+                                    }
+                                }
+                                isPlaying = true
+                             }
+                        }) {
+                            Icon(if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(if (isPlaying) "Stop" else stringResource(R.string.btn_preview))
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        Button(onClick = {
+                             val fileName = File(record.filePath).name
+                             saveLauncher.launch(fileName)
+                        }) {
+                            Icon(Icons.Default.Save, contentDescription = null)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(stringResource(R.string.btn_save_as))
+                        }
                     }
                 }
             }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -97,89 +98,96 @@ fun TaskDetailScreen(taskId: String, onBack: () -> Unit) {
             )
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            Text("${stringResource(R.string.label_url)} ${taskState.url}", style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            val statusColor = when (taskState.status) {
-                "SUCCESS" -> Color.Green
-                "FAILED" -> Color.Red
-                else -> Color.Blue
-            }
-            val statusText = when (taskState.status) {
-                "SUCCESS" -> stringResource(R.string.status_success)
-                "FAILED" -> stringResource(R.string.status_failed)
-                else -> stringResource(R.string.status_running)
-            }
-
-            Text("${stringResource(R.string.label_status)} $statusText", style = MaterialTheme.typography.labelLarge, color = statusColor)
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Text(stringResource(R.string.logs_label))
+        SelectionContainer {
             Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.05f))
-                    .padding(8.dp)
-                    .verticalScroll(rememberScrollState())
+                    .padding(padding)
+                    .fillMaxSize()
+                    .padding(16.dp)
             ) {
-                Text(taskState.logs.joinToString("\n"), style = MaterialTheme.typography.bodySmall)
-            }
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            if (taskState.status == "SUCCESS" && taskState.outputFile != null) {
-                Row {
-                    Button(
-                        onClick = {
-                            if (isPlaying) {
-                                mediaPlayer?.stop()
-                                mediaPlayer?.prepare()
-                                isPlaying = false
-                            } else {
-                                if (mediaPlayer == null) {
-                                    mediaPlayer = MediaPlayer().apply {
-                                        try {
-                                            setDataSource(taskState.outputFile)
-                                            prepare()
-                                        } catch (e: Exception) {
-                                            Toast.makeText(context, "播放出错", Toast.LENGTH_SHORT).show()
-                                            return@Button
+                if (!taskState.title.isNullOrBlank()) {
+                    Text("${stringResource(R.string.label_title)} ${taskState.title}", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                
+                Text("${stringResource(R.string.label_url)} ${taskState.url}", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                val statusColor = when (taskState.status) {
+                    "SUCCESS" -> Color.Green
+                    "FAILED" -> Color.Red
+                    else -> Color.Blue
+                }
+                val statusText = when (taskState.status) {
+                    "SUCCESS" -> stringResource(R.string.status_success)
+                    "FAILED" -> stringResource(R.string.status_failed)
+                    else -> stringResource(R.string.status_running)
+                }
+
+                Text("${stringResource(R.string.label_status)} $statusText", style = MaterialTheme.typography.labelLarge, color = statusColor)
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(stringResource(R.string.logs_label))
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .background(Color.Black.copy(alpha = 0.05f))
+                        .padding(8.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(taskState.logs.joinToString("\n"), style = MaterialTheme.typography.bodySmall)
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                if (taskState.status == "SUCCESS" && taskState.outputFile != null) {
+                    Row {
+                        Button(
+                            onClick = {
+                                if (isPlaying) {
+                                    mediaPlayer?.stop()
+                                    mediaPlayer?.prepare()
+                                    isPlaying = false
+                                } else {
+                                    if (mediaPlayer == null) {
+                                        mediaPlayer = MediaPlayer().apply {
+                                            try {
+                                                setDataSource(taskState.outputFile)
+                                                prepare()
+                                            } catch (e: Exception) {
+                                                Toast.makeText(context, "播放出错", Toast.LENGTH_SHORT).show()
+                                                return@Button
+                                            }
+                                            setOnCompletionListener { isPlaying = false }
                                         }
-                                        setOnCompletionListener { isPlaying = false }
                                     }
+                                    mediaPlayer?.start()
+                                    isPlaying = true
                                 }
-                                mediaPlayer?.start()
-                                isPlaying = true
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (isPlaying) "停止" else stringResource(R.string.btn_preview))
-                    }
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Button(
-                        onClick = {
-                             val path = taskState.outputFile ?: return@Button
-                             val fileName = File(path).name
-                             saveLauncher.launch(fileName)
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.btn_save_as))
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isPlaying) "停止" else stringResource(R.string.btn_preview))
+                        }
+                        
+                        Spacer(modifier = Modifier.width(16.dp))
+                        
+                        Button(
+                            onClick = {
+                                 val path = taskState.outputFile ?: return@Button
+                                 val fileName = File(path).name
+                                 saveLauncher.launch(fileName)
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Save, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(stringResource(R.string.btn_save_as))
+                        }
                     }
                 }
             }

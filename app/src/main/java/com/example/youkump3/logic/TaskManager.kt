@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
 data class TaskState(
     val taskId: String,
     val url: String,
+    val title: String? = null,
     val status: String, // "RUNNING", "SUCCESS", "FAILED"
     val logs: List<String>,
     val outputFile: String? = null,
@@ -53,8 +54,9 @@ class TaskManager(
         _taskStates[url] = stateFlow
 
         scope.launch {
-            // 1. Create initial record in DB immediately
+            // 1. Create initial record
             val initialRecord = ConversionRecord(
+                title = null,
                 originalUrl = url,
                 filePath = null,
                 status = "RUNNING",
@@ -62,36 +64,42 @@ class TaskManager(
                 logs = initialState.logs.joinToString("\n")
             )
             val insertedId = repository.addRecord(initialRecord)
-            
-            // 2. Update state with DB ID
             stateFlow.value = stateFlow.value.copy(dbId = insertedId)
 
-            // 3. Start conversion
+            // 2. Start conversion
             conversionManager.startConversion(
                 youkuUrl = url,
                 onLog = { msg ->
                     val current = stateFlow.value
-                    val newLogs = current.logs + msg
-                    stateFlow.value = current.copy(logs = newLogs)
-                    
-                    // Optional: Update DB logs periodically or at the end. 
-                    // Let's update at the end for performance, or every few logs.
+                    // Optimization: When title is first found in logs or returned by manager, we could update DB here.
+                    // But ConversionManager notifies onFinished with path which includes title.
+                    // Wait, I updated ConversionManager to return title? Let me check.
+                    stateFlow.value = current.copy(logs = current.logs + msg)
                 },
                 onFinished = { success, path ->
                     val current = stateFlow.value
                     val finalStatus = if (success) "SUCCESS" else "FAILED"
+                    
+                    // Extract title from path if success
+                    val extractedTitle = if (success && path != null) {
+                        File(path).nameWithoutExtension
+                    } else {
+                        current.title
+                    }
+
                     val finalLogs = current.logs + (if (success) "转换完成: $path" else "转换失败")
                     
                     stateFlow.value = current.copy(
                         status = finalStatus,
                         outputFile = path,
-                        logs = finalLogs
+                        logs = finalLogs,
+                        title = extractedTitle
                     )
 
-                    // 4. Update the DB record on finish
                     scope.launch {
                         val record = ConversionRecord(
                             id = current.dbId,
+                            title = extractedTitle,
                             originalUrl = url,
                             filePath = path,
                             status = finalStatus,
