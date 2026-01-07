@@ -1,20 +1,22 @@
 package com.example.youkump3
 
 import android.app.Application
-import android.util.Log
+import com.example.youkump3.data.AppDatabase
+import com.example.youkump3.data.HistoryRepository
+import com.example.youkump3.logic.TaskManager
 import com.yausername.youtubedl_android.YoutubeDL
-import com.yausername.youtubedl_android.YoutubeDLException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 class YoukuApp : Application() {
+
+    lateinit var taskManager: TaskManager
+        private set
+
     override fun onCreate() {
         super.onCreate()
-        try {
-            YoutubeDL.getInstance().init(this)
-        } catch (e: YoutubeDLException) {
-            Log.e("YoukuApp", "Failed to initialize YoutubeDL", e)
-        }
+        YoutubeDL.init(this)
+        
+        val db = AppDatabase.getDatabase(this)
+        val repo = HistoryRepository(db.historyDao())
+        taskManager = TaskManager(this, repo)
     }
 }

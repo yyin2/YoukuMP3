@@ -20,6 +20,7 @@ youtubedl = "0.19.0" # Trying a newer version, orstick to 0.16.0 if unsure. Let'
 [libraries]
 youtubedl-android = { group = "io.github.junkfood02.youtubedl-android", name = "library", version = "0.18.1" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version = "1.5.4" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

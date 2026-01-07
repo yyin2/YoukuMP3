@@ -16,12 +16,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,26 +54,32 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(onBack: () -> Unit, onRetry: (String) -> Unit) {
+fun HistoryScreen(onBack: () -> Unit, onNavigateToDetail: (String) -> Unit) {
     val context = LocalContext.current
     val db = AppDatabase.getDatabase(context)
     val repo = HistoryRepository(db.historyDao())
     val history by repo.allHistory.collectAsState(initial = emptyList())
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Button(onClick = onBack) {
-            Text(stringResource(R.string.back_to_home))
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.conversion_history)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            )
         }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(stringResource(R.string.conversion_history), style = MaterialTheme.typography.titleLarge)
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        LazyColumn {
+    ) { padding ->
+        LazyColumn(
+            modifier = Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
             items(history) { record ->
-                HistoryItem(record, onRetry, context)
+                HistoryItem(record, onNavigateToDetail, context)
             }
         }
     }
@@ -71,32 +87,21 @@ fun HistoryScreen(onBack: () -> Unit, onRetry: (String) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryItem(record: ConversionRecord, onRetry: (String) -> Unit, context: Context) {
+fun HistoryItem(record: ConversionRecord, onNavigateToDetail: (String) -> Unit, context: Context) {
     val isFailed = record.status != "SUCCESS"
     val isSuccess = record.status == "SUCCESS"
     
-    // Save As Launcher
+    // Local MediaPlayer state for preview in list (optional, might conflict with Detail, but handy)
+    var isPlaying by remember { mutableStateOf(false) }
+    var mediaPlayer: MediaPlayer? by remember { mutableStateOf(null) }
+
+    // Save Launcher
     val saveLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("audio/mpeg")
     ) { uri: Uri? ->
         uri?.let {
-            // Copy file to selected URI
             if (record.filePath != null) {
-                try {
-                    val sourceFile = File(record.filePath)
-                    if (sourceFile.exists()) {
-                        context.contentResolver.openOutputStream(it)?.use { output ->
-                            sourceFile.inputStream().use { input ->
-                                input.copyTo(output)
-                            }
-                        }
-                        Toast.makeText(context, context.getString(R.string.save_success), Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, context.getString(R.string.save_failed) + ": File not found", Toast.LENGTH_SHORT).show()
-                    }
-                } catch (e: Exception) {
-                    Toast.makeText(context, context.getString(R.string.save_failed) + ": ${e.message}", Toast.LENGTH_SHORT).show()
-                }
+                saveFile(context, record.filePath, it)
             }
         }
     }
@@ -105,9 +110,7 @@ fun HistoryItem(record: ConversionRecord, onRetry: (String) -> Unit, context: Co
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         onClick = {
-            if (isFailed) {
-                onRetry(record.originalUrl)
-            }
+            onNavigateToDetail(record.originalUrl)
         }
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -123,32 +126,69 @@ fun HistoryItem(record: ConversionRecord, onRetry: (String) -> Unit, context: Co
             if (isFailed) {
                 Text(stringResource(R.string.tap_to_retry), style = MaterialTheme.typography.labelSmall)
             }
+            
+            // Buttons if success
             if (isSuccess && record.filePath != null) {
+                Spacer(modifier = Modifier.height(8.dp))
                 Row {
                     Button(onClick = {
-                        try {
-                            val mp = MediaPlayer()
-                            mp.setDataSource(record.filePath)
-                            mp.prepare()
-                            mp.start()
-                        } catch (e: Exception) {
-                             Toast.makeText(context, context.getString(R.string.preview_error), Toast.LENGTH_SHORT).show()
-                        }
+                         if (isPlaying) {
+                            mediaPlayer?.stop()
+                            mediaPlayer?.release()
+                            mediaPlayer = null
+                            isPlaying = false
+                         } else {
+                            mediaPlayer = MediaPlayer().apply {
+                                try {
+                                    setDataSource(record.filePath)
+                                    prepare()
+                                    start()
+                                    setOnCompletionListener { 
+                                        isPlaying = false 
+                                        mediaPlayer?.release()
+                                        mediaPlayer = null
+                                    }
+                                } catch (e: Exception) {
+                                     Toast.makeText(context, "Error", Toast.LENGTH_SHORT).show()
+                                     return@apply
+                                }
+                            }
+                            isPlaying = true
+                         }
                     }) {
-                        Text(stringResource(R.string.btn_preview))
+                        Icon(if (isPlaying) Icons.Default.Stop else Icons.Default.PlayArrow, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(if (isPlaying) "Stop" else stringResource(R.string.btn_preview))
                     }
                     
                     Spacer(modifier = Modifier.width(8.dp))
                     
                     Button(onClick = {
-                         // Extract filename from path or default
                          val fileName = File(record.filePath).name
                          saveLauncher.launch(fileName)
                     }) {
+                        Icon(Icons.Default.Save, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(stringResource(R.string.btn_save_as))
                     }
                 }
             }
         }
+    }
+}
+
+private fun saveFile(context: Context, sourcePath: String, destUri: Uri) {
+    try {
+        val sourceFile = File(sourcePath)
+        if (sourceFile.exists()) {
+            context.contentResolver.openOutputStream(destUri)?.use { output ->
+                sourceFile.inputStream().use { input ->
+                    input.copyTo(output)
+                }
+            }
+            Toast.makeText(context, context.getString(R.string.save_success), Toast.LENGTH_SHORT).show()
+        }
+    } catch (e: Exception) {
+         Toast.makeText(context, context.getString(R.string.save_failed), Toast.LENGTH_SHORT).show()
     }
 }

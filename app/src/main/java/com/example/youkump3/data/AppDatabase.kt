@@ -5,18 +5,20 @@ import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "conversion_history")
 data class ConversionRecord(
-    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val originalUrl: String,
     val filePath: String?,
-    val status: String, // "SUCCESS", "FAILED"
+    val status: String,
     val timestamp: Long,
     val logs: String
 )
@@ -26,8 +28,11 @@ interface HistoryDao {
     @Query("SELECT * FROM conversion_history ORDER BY timestamp DESC")
     fun getAll(): Flow<List<ConversionRecord>>
 
-    @Insert
-    suspend fun insert(record: ConversionRecord)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(record: ConversionRecord): Long
+
+    @Update
+    suspend fun update(record: ConversionRecord)
 }
 
 @Database(entities = [ConversionRecord::class], version = 1, exportSchema = false)

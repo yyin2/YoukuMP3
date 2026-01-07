@@ -10,6 +10,11 @@
     <string name="label_url">链接：</string>
     <string name="label_status">状态：</string>
     <string name="label_path">路径：</string>
+    <string name="btn_clear">清空</string>
+    <string name="task_details_title">任务详情</string>
+    <string name="status_running">进行中</string>
+    <string name="not_found">找不到该任务信息</string>
+    <string name="back">返回</string>
     <string name="tap_to_retry">(点击重试)</string>
     <string name="status_success">成功</string>
     <string name="status_failed">失败</string>
